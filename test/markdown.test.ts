@@ -34,6 +34,170 @@ describe('renderDocxMarkdown', () => {
 
     expect(markdown).toBe('raw body\n')
   })
+
+  it('renders code payload as fenced code when block type is 14', () => {
+    const markdown = renderDocxMarkdown({
+      blocks: [
+        {
+          block_type: 14,
+          code: {
+            elements: [
+              {
+                text_run: {
+                  content: 'const a = 1;\nconst b = 2;',
+                },
+              },
+            ],
+            style: {
+              language: 30,
+            },
+          },
+        },
+      ],
+    })
+
+    expect(markdown).toContain('```javascript')
+    expect(markdown).toContain('const a = 1;\nconst b = 2;')
+    expect(markdown).not.toContain('- [ ] const a = 1;')
+  })
+
+  it('maps numeric code language from style to markdown language', () => {
+    const markdown = renderDocxMarkdown({
+      blocks: [
+        {
+          code: {
+            elements: [
+              {
+                text_run: {
+                  content: '<div>Hello</div>',
+                },
+              },
+            ],
+            style: {
+              language: 24,
+            },
+          },
+        },
+      ],
+    })
+
+    expect(markdown).toContain('```html')
+  })
+
+  it('maps numeric typescript language from style to markdown language', () => {
+    const markdown = renderDocxMarkdown({
+      blocks: [
+        {
+          code: {
+            elements: [
+              {
+                text_run: {
+                  content: 'const x: number = 1',
+                },
+              },
+            ],
+            style: {
+              language: 63,
+            },
+          },
+        },
+      ],
+    })
+
+    expect(markdown).toContain('```typescript')
+  })
+
+  it('normalizes string language aliases for code fences', () => {
+    const markdown = renderDocxMarkdown({
+      blocks: [
+        {
+          code: {
+            elements: [
+              {
+                text_run: {
+                  content: 'console.log(1)',
+                },
+              },
+            ],
+            style: {
+              language: 'js',
+            },
+          },
+        },
+      ],
+    })
+
+    expect(markdown).toContain('```javascript')
+  })
+
+  it('infers jsx fence from javascript with JSX syntax', () => {
+    const markdown = renderDocxMarkdown({
+      blocks: [
+        {
+          code: {
+            elements: [
+              {
+                text_run: {
+                  content: 'export const App = () => {\n  return (<Button />)\n}',
+                },
+              },
+            ],
+            style: {
+              language: 30,
+            },
+          },
+        },
+      ],
+    })
+
+    expect(markdown).toContain('```jsx')
+  })
+
+  it('infers tsx fence from typescript with JSX syntax', () => {
+    const markdown = renderDocxMarkdown({
+      blocks: [
+        {
+          code: {
+            elements: [
+              {
+                text_run: {
+                  content: 'const App: React.FC = () => {\n  return (<div />)\n}',
+                },
+              },
+            ],
+            style: {
+              language: 63,
+            },
+          },
+        },
+      ],
+    })
+
+    expect(markdown).toContain('```tsx')
+  })
+
+  it('infers vue fence from html language with SFC structure', () => {
+    const markdown = renderDocxMarkdown({
+      blocks: [
+        {
+          code: {
+            elements: [
+              {
+                text_run: {
+                  content: '<template><div /></template>\n<script setup lang=\"ts\"></script>',
+                },
+              },
+            ],
+            style: {
+              language: 24,
+            },
+          },
+        },
+      ],
+    })
+
+    expect(markdown).toContain('```vue')
+  })
 })
 
 describe('sanitizePathSegment', () => {

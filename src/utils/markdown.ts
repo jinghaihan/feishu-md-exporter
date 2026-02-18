@@ -1,3 +1,6 @@
+/* eslint-disable regexp/no-unused-capturing-group */
+import { FEISHU_CODE_LANGUAGE_ID_TO_MARKDOWN } from '../constants'
+
 export interface RenderDocxMarkdownOptions {
   title?: string
   blocks: unknown[]
@@ -77,7 +80,9 @@ export function sanitizePathSegment(input: string | undefined, fallback = 'untit
 
 function renderBlock(block: unknown): string[] {
   const blockType = getBlockType(block)
-  const text = normalizeLine(extractBlockText(block))
+  const text = blockType === 'code'
+    ? normalizeCodeBlockContent(extractBlockText(block))
+    : normalizeLine(extractBlockText(block))
   if (!text)
     return []
 
@@ -102,7 +107,7 @@ function renderBlock(block: unknown): string[] {
   if (blockType === 'quote')
     return [`> ${text}`]
   if (blockType === 'code') {
-    const language = getCodeLanguage(block)
+    const language = getCodeLanguage(block, text)
     return [`\`\`\`${language}`, text, '```']
   }
 
@@ -110,6 +115,10 @@ function renderBlock(block: unknown): string[] {
 }
 
 function getBlockType(block: unknown) {
+  const payloadType = getPayloadBlockType(block)
+  if (payloadType)
+    return payloadType
+
   const normalized = getNormalizedBlockType(block)
   if (normalized)
     return normalized
@@ -131,6 +140,8 @@ function getBlockType(block: unknown) {
     return 'bullet'
   if (numeric === 10)
     return 'ordered'
+  if (numeric === 13)
+    return 'ordered'
   if (numeric === 11)
     return 'code'
   if (numeric === 12)
@@ -138,6 +149,38 @@ function getBlockType(block: unknown) {
   if (numeric === 14)
     return 'todo'
   return 'paragraph'
+}
+
+function getPayloadBlockType(block: unknown) {
+  if (!block || typeof block !== 'object')
+    return undefined
+
+  const record = block as Record<string, unknown>
+  if ('heading1' in record)
+    return 'heading1'
+  if ('heading2' in record)
+    return 'heading2'
+  if ('heading3' in record)
+    return 'heading3'
+  if ('heading4' in record)
+    return 'heading4'
+  if ('heading5' in record)
+    return 'heading5'
+  if ('heading6' in record)
+    return 'heading6'
+  if ('bullet' in record)
+    return 'bullet'
+  if ('ordered' in record)
+    return 'ordered'
+  if ('code' in record)
+    return 'code'
+  if ('quote' in record)
+    return 'quote'
+  if ('todo' in record)
+    return 'todo'
+  if ('callout' in record)
+    return 'callout'
+  return undefined
 }
 
 function getNumericBlockType(block: unknown) {
@@ -163,7 +206,7 @@ function getNormalizedBlockType(block: unknown) {
   return undefined
 }
 
-function getCodeLanguage(block: unknown) {
+function getCodeLanguage(block: unknown, content: string) {
   if (!block || typeof block !== 'object')
     return ''
 
@@ -171,11 +214,25 @@ function getCodeLanguage(block: unknown) {
   if (!code || typeof code !== 'object')
     return ''
 
-  const language = (code as Record<string, unknown>).language
-  if (typeof language !== 'string')
-    return ''
+  let resolved = ''
+  const style = (code as Record<string, unknown>).style
+  if (style && typeof style === 'object') {
+    const languageFromStyle = (style as Record<string, unknown>).language
+    if (typeof languageFromStyle === 'number')
+      resolved = FEISHU_CODE_LANGUAGE_ID_TO_MARKDOWN[languageFromStyle] || ''
+    if (typeof languageFromStyle === 'string')
+      resolved = normalizeCodeFenceLanguage(languageFromStyle)
+  }
 
-  return language.trim()
+  if (!resolved) {
+    const languageFromCode = (code as Record<string, unknown>).language
+    if (typeof languageFromCode === 'string')
+      resolved = normalizeCodeFenceLanguage(languageFromCode)
+    if (typeof languageFromCode === 'number')
+      resolved = FEISHU_CODE_LANGUAGE_ID_TO_MARKDOWN[languageFromCode] || ''
+  }
+
+  return inferCodeFenceLanguage(resolved, content)
 }
 
 function extractBlockText(block: unknown) {
@@ -251,10 +308,66 @@ function normalizeLine(input: string | undefined) {
     .trim()
 }
 
+function normalizeCodeBlockContent(input: string | undefined) {
+  if (!input)
+    return ''
+  return input
+    .replace(/\r\n/g, '\n')
+    .trim()
+}
+
 function normalizeRawContent(input: string | undefined) {
   if (!input)
     return ''
   return input.trim()
+}
+
+function normalizeCodeFenceLanguage(input: string) {
+  const normalized = input.trim().toLowerCase()
+  if (!normalized)
+    return ''
+  if (normalized === 'js')
+    return 'javascript'
+  if (normalized === 'jsx')
+    return 'jsx'
+  if (normalized === 'ts')
+    return 'typescript'
+  if (normalized === 'tsx')
+    return 'tsx'
+  if (normalized === 'javascriptreact')
+    return 'jsx'
+  if (normalized === 'typescriptreact')
+    return 'tsx'
+  if (normalized === 'yml')
+    return 'yaml'
+  if (normalized === 'plaintext' || normalized === 'plain text')
+    return 'text'
+  return normalized
+}
+
+function inferCodeFenceLanguage(language: string, content: string) {
+  if (!content.trim())
+    return language
+
+  if (language === 'javascript' && looksLikeJsx(content))
+    return 'jsx'
+  if (language === 'typescript' && looksLikeJsx(content))
+    return 'tsx'
+  if ((language === 'html' || language === 'text') && looksLikeVueSfc(content))
+    return 'vue'
+
+  return language
+}
+
+function looksLikeJsx(content: string) {
+  return /<[A-Z][A-Za-z0-9]*(\s|>)/.test(content)
+    || /return\s*\(\s*</.test(content)
+    || /<>\s*/.test(content)
+}
+
+function looksLikeVueSfc(content: string) {
+  return /<template(\s|>)/.test(content)
+    && /<script(\s|>)/.test(content)
 }
 
 function hasMarkdownBody(lines: string[]) {

@@ -28,6 +28,22 @@ export const WIKI_GET_NODE_QUERY_TEMPLATES = [
   'obj_token={token}',
 ] as const
 
+// Mapped from Feishu docx code block `code.style.language` values.
+// Source: larksuite/lark-openapi-mcp -> docx_v1 "Code block language Options".
+export const FEISHU_CODE_LANGUAGE_ID_TO_MARKDOWN: Readonly<Record<number, string>> = {
+  1: 'text',
+  7: 'bash',
+  12: 'css',
+  24: 'html',
+  28: 'json',
+  30: 'javascript',
+  39: 'markdown',
+  60: 'shell',
+  63: 'typescript',
+  66: 'xml',
+  67: 'yaml',
+} as const
+
 export const DEFAULT_OPTIONS: Partial<CommandOptions> = {
   debug: false,
   output: DEFAULT_OUTPUT_DIR,
