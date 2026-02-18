@@ -7,7 +7,7 @@
     "module": "ESNext",
     "moduleResolution": "Bundler",
     "paths": {
-      "feishu-downloader": ["./src/index.ts"]
+      "feishu-md-exporter": ["./src/index.ts"]
     },
     "resolveJsonModule": true,
     "strict": true,

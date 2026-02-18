@@ -1,18 +1,18 @@
 {
-  "name": "feishu-downloader",
+  "name": "feishu-md-exporter",
   "type": "module",
   "version": "0.0.0",
   "packageManager": "pnpm@10.29.3",
-  "description": "",
+  "description": "Discover linked Feishu documents and export markdown.",
   "author": "jinghaihan",
   "license": "MIT",
-  "homepage": "https://github.com/jinghaihan/feishu-downloader#readme",
+  "homepage": "https://github.com/jinghaihan/feishu-md-exporter#readme",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/jinghaihan/feishu-downloader.git"
+    "url": "git+https://github.com/jinghaihan/feishu-md-exporter.git"
   },
   "bugs": {
-    "url": "https://github.com/jinghaihan/feishu-downloader/issues"
+    "url": "https://github.com/jinghaihan/feishu-md-exporter/issues"
   },
   "keywords": [],
   "exports": {
@@ -22,7 +22,7 @@
   },
   "types": "./dist/index.d.mts",
   "bin": {
-    "feishu-downloader": "./bin/cli.mjs"
+    "feishu-md-exporter": "./bin/cli.mjs"
   },
   "files": [
     "bin",

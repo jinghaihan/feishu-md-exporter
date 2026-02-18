@@ -1,4 +1,4 @@
-# feishu-downloader
+# feishu-md-exporter
 
 [![npm version][npm-version-src]][npm-version-href]
 [![bundle][bundle-src]][bundle-href]
@@ -32,12 +32,12 @@ writes a manifest JSON to `./output/manifest.json`, and exports markdown files i
 
 Config file is supported via `unconfig`:
 
-- `feishu-downloader.config.ts`
+- `feishu-md-exporter.config.ts`
 
 Example:
 
 ```ts
-import { defineConfig } from 'feishu-downloader'
+import { defineConfig } from 'feishu-md-exporter'
 
 export default defineConfig({
   url: 'https://my.feishu.cn/docx/TEST_DOCX_TOKEN_001',
@@ -69,13 +69,13 @@ Environment variables are also supported:
 
 <!-- Badges -->
 
-[npm-version-src]: https://img.shields.io/npm/v/feishu-downloader?style=flat&colorA=080f12&colorB=1fa669
-[npm-version-href]: https://npmjs.com/package/feishu-downloader
-[npm-downloads-src]: https://img.shields.io/npm/dm/feishu-downloader?style=flat&colorA=080f12&colorB=1fa669
-[npm-downloads-href]: https://npmjs.com/package/feishu-downloader
-[bundle-src]: https://img.shields.io/bundlephobia/minzip/feishu-downloader?style=flat&colorA=080f12&colorB=1fa669&label=minzip
-[bundle-href]: https://bundlephobia.com/result?p=feishu-downloader
+[npm-version-src]: https://img.shields.io/npm/v/feishu-md-exporter?style=flat&colorA=080f12&colorB=1fa669
+[npm-version-href]: https://npmjs.com/package/feishu-md-exporter
+[npm-downloads-src]: https://img.shields.io/npm/dm/feishu-md-exporter?style=flat&colorA=080f12&colorB=1fa669
+[npm-downloads-href]: https://npmjs.com/package/feishu-md-exporter
+[bundle-src]: https://img.shields.io/bundlephobia/minzip/feishu-md-exporter?style=flat&colorA=080f12&colorB=1fa669&label=minzip
+[bundle-href]: https://bundlephobia.com/result?p=feishu-md-exporter
 [license-src]: https://img.shields.io/badge/license-MIT-blue.svg?style=flat&colorA=080f12&colorB=1fa669
-[license-href]: https://github.com/jinghaihan/feishu-downloader/LICENSE
+[license-href]: https://github.com/jinghaihan/feishu-md-exporter/LICENSE
 [jsdocs-src]: https://img.shields.io/badge/jsdocs-reference-080f12?style=flat&colorA=080f12&colorB=1fa669
-[jsdocs-href]: https://www.jsdocs.io/package/feishu-downloader
+[jsdocs-href]: https://www.jsdocs.io/package/feishu-md-exporter

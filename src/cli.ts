@@ -21,6 +21,7 @@ import { exportMarkdown } from './export'
 try {
   const cli: CAC = cac(NAME)
   cli
+    .command('', 'Discover linked Feishu documents and export markdown')
     .option('--url <url>', 'Root Feishu document URL')
     .option('--app-id <appId>', 'Feishu app id')
     .option('--app-secret <appSecret>', 'Feishu app secret')
@@ -30,9 +31,6 @@ try {
     .option('--max-depth <maxDepth>', `Maximum recursive depth (default: ${DEFAULT_MAX_DEPTH})`)
     .option('--max-docs <maxDocs>', `Maximum discovered document count (default: ${DEFAULT_MAX_DOCS})`)
     .option('--page-size <pageSize>', `API page size (default: ${DEFAULT_PAGE_SIZE})`)
-
-  cli
-    .command('', 'Discover linked Feishu documents and export markdown')
     .action(async (options: Partial<CommandOptions>) => {
       p.intro(`${c.yellow`${NAME} `}${c.dim`v${VERSION}`}`)
 
