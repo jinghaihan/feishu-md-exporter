@@ -61,6 +61,12 @@ export interface RawContentData {
   content?: string
 }
 
+export interface DriveFileDownload {
+  content: string
+  contentType?: string
+  contentDisposition?: string
+}
+
 export interface WikiNodeRaw {
   node_token?: string
   parent_node_token?: string

@@ -66,3 +66,42 @@ export function getFeishuErrorCode(data: unknown): number | undefined {
 export function isRateLimitErrorCode(code: number | undefined) {
   return !!(code && FEISHU_RATE_LIMIT_CODES.includes(code))
 }
+
+export function parseContentDispositionFilename(contentDisposition: string | undefined) {
+  if (!contentDisposition)
+    return undefined
+
+  const parameters = contentDisposition
+    .split(';')
+    .map(segment => segment.trim())
+    .filter(Boolean)
+
+  const extendedParameter = parameters.find(parameter => parameter.toLowerCase().startsWith('filename*='))
+  if (extendedParameter) {
+    const rawValue = extendedParameter.slice(extendedParameter.indexOf('=') + 1).trim()
+    const encoded = rawValue.includes('\'\'')
+      ? rawValue.slice(rawValue.indexOf('\'\'') + 2)
+      : rawValue
+
+    try {
+      return decodeURIComponent(stripOptionalQuotes(encoded))
+    }
+    catch {
+      // ignore decode errors and fallback to plain filename parsing
+    }
+  }
+
+  const simpleParameter = parameters.find(parameter => parameter.toLowerCase().startsWith('filename='))
+  if (!simpleParameter)
+    return undefined
+
+  const simpleValue = simpleParameter.slice(simpleParameter.indexOf('=') + 1).trim()
+  return stripOptionalQuotes(simpleValue) || undefined
+}
+
+function stripOptionalQuotes(value: string) {
+  if (value.startsWith('"') && value.endsWith('"'))
+    return value.slice(1, -1)
+
+  return value
+}

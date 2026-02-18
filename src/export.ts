@@ -7,16 +7,25 @@ import type {
   ExportProgressEvent,
 } from './types'
 import { mkdir, readFile, unlink, writeFile } from 'node:fs/promises'
+import { extname } from 'node:path'
 import { dirname, join } from 'pathe'
 import { FeishuClient } from './client'
+import { EXPORTABLE_TEXT_FILE_EXTENSIONS, WIKI_OBJECT_KIND_FILE } from './constants'
 import { discoverResultSchema } from './schema'
 import {
   hasMarkdownBodyContent,
   jsonParse,
   mapWikiObjectKind,
+  normalizeMarkdownOutput,
+  parseContentDispositionFilename,
   renderDocxMarkdown,
   sanitizePathSegment,
 } from './utils'
+
+interface ExportSource {
+  kind: 'docx' | 'file'
+  token: string
+}
 
 export async function exportMarkdown(options: ExportMarkdownOptions): Promise<ExportMarkdownResult> {
   const manifest = await loadDiscoverResult(options.manifestPath)
@@ -44,10 +53,10 @@ export async function exportMarkdown(options: ExportMarkdownOptions): Promise<Ex
 
     try {
       const targetPath = `${join(options.outputDirPath, ...entry.pathSegments)}.md`
-      const sourceToken = await resolveDocxSourceToken(client, entry.item)
-      if (!sourceToken) {
+      const source = await resolveExportSource(client, entry.item)
+      if (!source) {
         skipped += 1
-        const message = `Skip ${entry.item.id}: no docx source`
+        const message = `Skip ${entry.item.id}: no supported export source`
         warnings.push(message)
         emitProgress(options, warnings, {
           status: 'skip',
@@ -60,10 +69,12 @@ export async function exportMarkdown(options: ExportMarkdownOptions): Promise<Ex
         continue
       }
 
-      const cacheKey = `docx:${sourceToken}`
+      const cacheKey = `${source.kind}:${source.token}`
       let markdown = markdownCache.get(cacheKey)
       if (!markdown) {
-        markdown = await fetchDocxMarkdown(client, sourceToken, entry.item.title)
+        markdown = source.kind === 'docx'
+          ? await fetchDocxMarkdown(client, source.token, entry.item.title)
+          : await fetchDriveFileMarkdown(client, source.token, entry.item.title)
         markdownCache.set(cacheKey, markdown)
       }
 
@@ -180,21 +191,45 @@ async function fetchDocxMarkdown(client: FeishuClient, documentToken: string, ti
   return markdown
 }
 
-async function resolveDocxSourceToken(client: FeishuClient, item: DocumentItem): Promise<string | undefined> {
+async function fetchDriveFileMarkdown(client: FeishuClient, fileToken: string, title: string | undefined) {
+  const downloaded = await client.downloadDriveFile(fileToken)
+  const filename = parseContentDispositionFilename(downloaded.contentDisposition) || title || ''
+  if (!isTextFile(filename, downloaded.contentType))
+    throw new Error(`Unsupported file type for markdown export (${fileToken})`)
+
+  const markdown = normalizeMarkdownOutput(stripUtf8Bom(downloaded.content || ''))
+  return markdown
+}
+
+async function resolveExportSource(client: FeishuClient, item: DocumentItem): Promise<ExportSource | undefined> {
   if (item.kind === 'docx')
-    return item.token
+    return { kind: 'docx', token: item.token }
 
   if (item.kind !== 'wiki')
     return undefined
 
-  const mappedKind = mapWikiObjectKind(item.objKind || '')
-  if (mappedKind === 'docx' && item.objToken)
-    return item.objToken
+  const directResolved = resolveWikiObjectSource(item.objKind, item.objToken)
+  if (directResolved)
+    return directResolved
 
   const node = await client.getWikiNode(item.token)
-  const resolvedKind = mapWikiObjectKind(node.objType || '')
-  if (resolvedKind === 'docx' && node.objToken)
-    return node.objToken
+  const nodeResolved = resolveWikiObjectSource(node.objType, node.objToken)
+  if (nodeResolved)
+    return nodeResolved
+
+  return undefined
+}
+
+function resolveWikiObjectSource(objKind: string | undefined, objToken: string | undefined): ExportSource | undefined {
+  if (!objToken)
+    return undefined
+
+  const mappedKind = mapWikiObjectKind(objKind || '')
+  if (mappedKind === 'docx')
+    return { kind: 'docx', token: objToken }
+
+  if ((objKind || '').toLowerCase() === WIKI_OBJECT_KIND_FILE)
+    return { kind: 'file', token: objToken }
 
   return undefined
 }
@@ -276,4 +311,24 @@ function isWikiMappedDocxChild(item: DocumentItem, parentItem: DocumentItem | un
     return false
 
   return !!(parentItem.objToken && parentItem.objToken === item.token)
+}
+
+function isTextFile(filename: string | undefined, contentType: string | undefined) {
+  const normalizedContentType = (contentType || '').toLowerCase()
+  if (normalizedContentType.startsWith('text/'))
+    return true
+  if (normalizedContentType.includes('markdown'))
+    return true
+
+  const normalizedExt = extname(filename || '').toLowerCase()
+  if (!normalizedExt)
+    return false
+
+  return EXPORTABLE_TEXT_FILE_EXTENSIONS.includes(normalizedExt as (typeof EXPORTABLE_TEXT_FILE_EXTENSIONS)[number])
+}
+
+function stripUtf8Bom(value: string) {
+  if (value.startsWith('\uFEFF'))
+    return value.slice(1)
+  return value
 }

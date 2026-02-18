@@ -3,6 +3,7 @@ import type {
   DocumentBlocksPageData,
   DocumentDiscovery,
   DocumentMetaData,
+  DriveFileDownload,
   RawContentData,
   TenantAccessTokenCache,
   TenantAccessTokenData,
@@ -105,6 +106,13 @@ export class FeishuClient {
       rawContentDataSchema,
     )
     return response.content
+  }
+
+  async downloadDriveFile(fileToken: string): Promise<DriveFileDownload> {
+    const path = `/drive/v1/files/${fileToken}/download`
+    const requestId = ++this.requestSequence
+    this.debugLog(`req#${requestId} queued-download path=${path}`)
+    return this.limiter.schedule(() => this.downloadWithRetry(requestId, path))
   }
 
   async getWikiNode(nodeToken: string): Promise<WikiNode> {
@@ -283,6 +291,23 @@ export class FeishuClient {
     )
   }
 
+  private async downloadWithRetry(requestId: number, path: string): Promise<DriveFileDownload> {
+    return pRetry(
+      () => this.downloadOnce(requestId, path),
+      {
+        retries: API_RETRY_COUNT,
+        minTimeout: API_RETRY_MIN_TIMEOUT_MS,
+        maxTimeout: API_RETRY_MAX_TIMEOUT_MS,
+        randomize: true,
+        shouldRetry: ({ error }) => this.shouldRetryRequest(error),
+        onFailedAttempt: ({ attemptNumber, retriesLeft, error }) => {
+          const message = error instanceof Error ? error.message : String(error)
+          this.debugLog(`req#${requestId} retry attempt=${attemptNumber} left=${retriesLeft} reason=${message}`)
+        },
+      },
+    )
+  }
+
   private shouldRetryRequest(error: Error) {
     return error instanceof FeishuRequestError && error.retriable
   }
@@ -331,6 +356,72 @@ export class FeishuClient {
 
       this.debugLog(`req#${requestId} success path=${path} elapsed=${Date.now() - startedAt}ms`)
       return parsedData.data
+    }
+    catch (error) {
+      if (error instanceof FetchError) {
+        const status = error.response?.status || error.statusCode
+        const statusText = error.response?.statusText || error.statusMessage || ''
+        const errorCode = getFeishuErrorCode(error.data)
+        const isRateLimited = isRateLimitErrorCode(errorCode) || status === 429
+        const retriable = isRateLimited || (status !== undefined && status >= 500)
+        const detail = formatFetchErrorDetail(error.data)
+        if (isRateLimited)
+          await this.waitForRateLimitBackoff(requestId, path, String(errorCode || status || '429'))
+        this.debugLog(`req#${requestId} fetch-error path=${path} status=${status || 'unknown'} retriable=${retriable} elapsed=${Date.now() - startedAt}ms detail=${detail || 'none'}`)
+        throw new FeishuRequestError(
+          `Feishu request failed (${path}): ${status || 'unknown'} ${statusText}${detail ? ` - ${detail}` : ''}`,
+          retriable,
+        )
+      }
+
+      this.debugLog(`req#${requestId} error path=${path} elapsed=${Date.now() - startedAt}ms reason=${error instanceof Error ? error.message : String(error)}`)
+      throw error
+    }
+  }
+
+  private async downloadOnce(requestId: number, path: string): Promise<DriveFileDownload> {
+    const headers = new Headers()
+    const startedAt = Date.now()
+    this.debugLog(`req#${requestId} start path=${path}`)
+
+    const token = await this.getTenantAccessToken()
+    headers.set('Authorization', `Bearer ${token}`)
+
+    try {
+      const response = await ofetch.raw(
+        `${FEISHU_API_BASE}${path}`,
+        {
+          headers: Object.fromEntries(headers.entries()),
+          responseType: 'text',
+          timeout: API_REQUEST_TIMEOUT_MS,
+        },
+      )
+
+      const contentType = response.headers.get('content-type') || undefined
+      const contentDisposition = response.headers.get('content-disposition') || undefined
+      const content = typeof response._data === 'string'
+        ? response._data
+        : JSON.stringify(response._data || '')
+
+      if (contentType?.includes('application/json')) {
+        const errorCode = getFeishuErrorCode(content)
+        const retriable = isRateLimitErrorCode(errorCode)
+        const detail = formatFetchErrorDetail(content)
+        if (retriable)
+          await this.waitForRateLimitBackoff(requestId, path, String(errorCode || 'unknown'))
+
+        throw new FeishuRequestError(
+          `Feishu file download failed (${path}): ${detail || 'unexpected JSON response'}`,
+          retriable,
+        )
+      }
+
+      this.debugLog(`req#${requestId} success path=${path} elapsed=${Date.now() - startedAt}ms`)
+      return {
+        content,
+        contentType,
+        contentDisposition,
+      }
     }
     catch (error) {
       if (error instanceof FetchError) {

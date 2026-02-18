@@ -27,6 +27,8 @@ export const WIKI_GET_NODE_QUERY_TEMPLATES = [
   'obj_type=wiki&token={token}',
   'obj_token={token}',
 ] as const
+export const WIKI_OBJECT_KIND_FILE = 'file'
+export const EXPORTABLE_TEXT_FILE_EXTENSIONS = ['.md', '.markdown', '.txt'] as const
 
 // Mapped from Feishu docx code block `code.style.language` values.
 // Source: larksuite/lark-openapi-mcp -> docx_v1 "Code block language Options".
