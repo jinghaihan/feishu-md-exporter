@@ -41,6 +41,26 @@ export function renderDocxMarkdown(options: RenderDocxMarkdownOptions) {
   return body ? `${body}\n` : ''
 }
 
+export function hasMarkdownBodyContent(markdown: string) {
+  const lines = markdown
+    .replace(/\r\n/g, '\n')
+    .split('\n')
+  let headingCount = 0
+
+  for (const line of lines) {
+    const trimmed = line.trim()
+    if (!trimmed)
+      continue
+    if (isMarkdownHeadingLine(trimmed)) {
+      headingCount += 1
+      continue
+    }
+    return true
+  }
+
+  return headingCount > 1
+}
+
 export function sanitizePathSegment(input: string | undefined, fallback = 'untitled') {
   const normalized = (input || '')
     .trim()
@@ -239,6 +259,10 @@ function normalizeRawContent(input: string | undefined) {
 
 function hasMarkdownBody(lines: string[]) {
   return lines.some(line => !!line.trim() && !line.trimStart().startsWith('#'))
+}
+
+function isMarkdownHeadingLine(line: string) {
+  return /^#{1,6}\s+/.test(line)
 }
 
 function compactBlankLines(lines: string[]) {

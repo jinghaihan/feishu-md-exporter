@@ -6,11 +6,11 @@ import type {
   ExportMarkdownResult,
   ExportProgressEvent,
 } from './types'
-import { mkdir, readFile, writeFile } from 'node:fs/promises'
+import { mkdir, readFile, unlink, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'pathe'
 import { FeishuClient } from './client'
 import { discoverResultSchema } from './schema'
-import { jsonParse, mapWikiObjectKind, renderDocxMarkdown, sanitizePathSegment } from './utils'
+import { hasMarkdownBodyContent, jsonParse, mapWikiObjectKind, renderDocxMarkdown, sanitizePathSegment } from './utils'
 
 export async function exportMarkdown(options: ExportMarkdownOptions): Promise<ExportMarkdownResult> {
   const manifest = await loadDiscoverResult(options.manifestPath)
@@ -37,6 +37,7 @@ export async function exportMarkdown(options: ExportMarkdownOptions): Promise<Ex
     })
 
     try {
+      const targetPath = `${join(options.outputDirPath, ...entry.pathSegments)}.md`
       const sourceToken = await resolveDocxSourceToken(client, entry.item)
       if (!sourceToken) {
         skipped += 1
@@ -60,22 +61,23 @@ export async function exportMarkdown(options: ExportMarkdownOptions): Promise<Ex
         markdownCache.set(cacheKey, markdown)
       }
 
-      if (!markdown.trim()) {
+      if (!hasMarkdownBodyContent(markdown)) {
+        await removeFileIfExists(targetPath)
         skipped += 1
-        const message = `Skip ${entry.item.id}: empty markdown content`
+        const message = `Skip ${entry.item.id}: markdown has no body content`
         warnings.push(message)
         emitProgress(options, warnings, {
           status: 'skip',
           sequence,
           id: entry.item.id,
           message,
+          targetPath,
           written,
           skipped,
         })
         continue
       }
 
-      const targetPath = `${join(options.outputDirPath, ...entry.pathSegments)}.md`
       await mkdir(dirname(targetPath), { recursive: true })
       await writeFile(targetPath, markdown, 'utf-8')
 
@@ -125,6 +127,20 @@ function emitProgress(
     ...event,
     warnings: warnings.length,
   })
+}
+
+async function removeFileIfExists(path: string) {
+  try {
+    await unlink(path)
+  }
+  catch (error) {
+    if (!isMissingFileError(error))
+      throw error
+  }
+}
+
+function isMissingFileError(error: unknown) {
+  return !!error && typeof error === 'object' && 'code' in error && (error as { code?: string }).code === 'ENOENT'
 }
 
 async function loadDiscoverResult(manifestPath: string): Promise<DiscoverResult> {

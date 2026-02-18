@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { renderDocxMarkdown, sanitizePathSegment } from '../src/utils'
+import { hasMarkdownBodyContent, renderDocxMarkdown, sanitizePathSegment } from '../src/utils'
 
 describe('renderDocxMarkdown', () => {
   it('renders heading and list blocks', () => {
@@ -39,5 +39,19 @@ describe('renderDocxMarkdown', () => {
 describe('sanitizePathSegment', () => {
   it('normalizes unsupported filename characters', () => {
     expect(sanitizePathSegment('a/b:c*?', 'fallback')).toBe('a-b-c')
+  })
+})
+
+describe('hasMarkdownBodyContent', () => {
+  it('returns false for heading-only markdown', () => {
+    expect(hasMarkdownBodyContent('# Title\n')).toBe(false)
+  })
+
+  it('returns true for multi-heading markdown', () => {
+    expect(hasMarkdownBodyContent('# Title\n\n## Section\n')).toBe(true)
+  })
+
+  it('returns true when markdown has non-heading body', () => {
+    expect(hasMarkdownBodyContent('# Title\n\nBody text\n')).toBe(true)
   })
 })
