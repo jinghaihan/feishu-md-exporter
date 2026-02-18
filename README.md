@@ -21,6 +21,7 @@ writes a manifest JSON to `./output/manifest.json`, and exports markdown files i
 - `--url <url>`: root document url (required)
 - `--app-id <appId>`: Feishu app id (required unless `FEISHU_APP_ID` is set)
 - `--app-secret <appSecret>`: Feishu app secret (required unless `FEISHU_APP_SECRET` is set)
+- `--skip-discover`: skip discovery stage and export from existing manifest
 - `--output <path>`: output directory for manifest + markdown (default `output`)
 - `--manifest <name>`: manifest file name under output directory (default `manifest.json`)
 - `--max-depth <n>`: max recursive depth (default `10`)
@@ -53,8 +54,19 @@ Environment variables are also supported:
 - `FEISHU_APP_SECRET`
 - `FEISHU_PAGE_SIZE`
 - `FEISHU_DEBUG`
+- `FEISHU_SKIP_DISCOVER`
 
 `.env` and `.env.local` in cwd are loaded automatically.
+
+### Export With Existing Manifest
+
+If you already have `output/manifest.json`, you can skip discovery and run export only:
+
+```bash
+pnpm start --skip-discover \
+  --app-id "<your-app-id>" \
+  --app-secret "<your-app-secret>"
+```
 
 ### Where to find App ID / App Secret
 

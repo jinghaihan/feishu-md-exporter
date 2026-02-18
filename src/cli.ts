@@ -1,6 +1,6 @@
 import type { CAC } from 'cac'
 import type { CommandOptions, DiscoverProgressEvent, ExportProgressEvent } from './types'
-import { mkdir, writeFile } from 'node:fs/promises'
+import { access, mkdir, writeFile } from 'node:fs/promises'
 import process from 'node:process'
 import * as p from '@clack/prompts'
 import c from 'ansis'
@@ -26,6 +26,7 @@ try {
     .option('--app-id <appId>', 'Feishu app id')
     .option('--app-secret <appSecret>', 'Feishu app secret')
     .option('--debug', 'Enable verbose debug logs')
+    .option('--skip-discover', 'Skip discovery stage and export using existing manifest')
     .option('--output <output>', `Output directory (default: ${DEFAULT_OUTPUT_DIR})`)
     .option('--manifest <manifest>', `Manifest filename (default: ${DEFAULT_MANIFEST_FILE})`)
     .option('--max-depth <maxDepth>', `Maximum recursive depth (default: ${DEFAULT_MAX_DEPTH})`)
@@ -36,14 +37,21 @@ try {
 
       const config = await resolveConfig(options)
 
-      const discoverResult = await runDiscoverStage(config)
-      await mkdir(config.outputDirPath, { recursive: true })
-      await writeFile(config.manifestPath, `${JSON.stringify(discoverResult, null, 2)}\n`, 'utf-8')
-      p.log.success(`Manifest written to ${config.manifestPath}`)
+      let discoverResult: Awaited<ReturnType<typeof runDiscoverStage>> | undefined
+      if (config.skipDiscover) {
+        await ensureManifestExists(config.manifestPath)
+        p.log.step(`Skip discovery, using existing manifest: ${config.manifestPath}`)
+      }
+      else {
+        discoverResult = await runDiscoverStage(config)
+        await mkdir(config.outputDirPath, { recursive: true })
+        await writeFile(config.manifestPath, `${JSON.stringify(discoverResult, null, 2)}\n`, 'utf-8')
+        p.log.success(`Manifest written to ${config.manifestPath}`)
+      }
 
       const exportResult = await runExportStage(config)
 
-      if (discoverResult.warnings.length > 0)
+      if (discoverResult && discoverResult.warnings.length > 0)
         p.log.warn(`Discover warnings: ${discoverResult.warnings.length}`)
       if (exportResult.warnings.length > 0)
         p.log.warn(`Export warnings: ${exportResult.warnings.length}`)
@@ -215,4 +223,13 @@ function clearSpinnerHeartbeat(timer: NodeJS.Timeout | undefined) {
   if (timer)
     clearInterval(timer)
   return undefined
+}
+
+async function ensureManifestExists(manifestPath: string) {
+  try {
+    await access(manifestPath)
+  }
+  catch {
+    throw new Error(`Manifest not found: ${manifestPath}. Run discovery first or disable --skip-discover.`)
+  }
 }

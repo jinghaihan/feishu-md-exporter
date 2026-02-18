@@ -49,12 +49,14 @@ export async function readConfig(options: { cwd?: string }) {
 }
 
 function resolveOptions(options: Partial<CommandOptions>): ResolvedOptions {
+  const skipDiscover = toBoolean(options.skipDiscover, false, '--skip-discover')
   const baseOptions: Required<CommandOptions> = {
     cwd: options.cwd || process.cwd(),
-    url: requiredString(options.url, 'url'),
+    url: skipDiscover ? (options.url || '') : requiredString(options.url, 'url'),
     appId: requiredString(options.appId, 'app-id'),
     appSecret: requiredString(options.appSecret, 'app-secret'),
     debug: options.debug ?? false,
+    skipDiscover: options.skipDiscover ?? false,
     output: options.output || DEFAULT_OUTPUT_DIR,
     manifest: options.manifest || DEFAULT_MANIFEST_FILE,
     maxDepth: options.maxDepth ?? DEFAULT_MAX_DEPTH,
@@ -66,6 +68,7 @@ function resolveOptions(options: Partial<CommandOptions>): ResolvedOptions {
   return {
     ...baseOptions,
     debug: toBoolean(baseOptions.debug, false, '--debug'),
+    skipDiscover,
     outputDirPath,
     manifestPath: resolve(outputDirPath, baseOptions.manifest),
     maxDepth: toPositiveInt(baseOptions.maxDepth, DEFAULT_MAX_DEPTH, '--max-depth'),
@@ -79,6 +82,7 @@ function resolveEnvOptions() {
     appId: process.env.FEISHU_APP_ID,
     appSecret: process.env.FEISHU_APP_SECRET,
     debug: process.env.FEISHU_DEBUG,
+    skipDiscover: process.env.FEISHU_SKIP_DISCOVER,
     pageSize: process.env.FEISHU_PAGE_SIZE,
   } satisfies Partial<CommandOptions>
 }

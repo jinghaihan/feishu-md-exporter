@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { hasMarkdownBodyContent, renderDocxMarkdown, sanitizePathSegment } from '../src/utils'
+import { hasMarkdownBodyContent, normalizeMarkdownOutput, renderDocxMarkdown, sanitizePathSegment } from '../src/utils'
 
 describe('renderDocxMarkdown', () => {
   it('renders heading and list blocks', () => {
@@ -24,6 +24,175 @@ describe('renderDocxMarkdown', () => {
     expect(markdown).toContain('# Sample')
     expect(markdown).toContain('# Heading One')
     expect(markdown).toContain('- List Item')
+  })
+
+  it('renders ordered blocks as sequential markdown list numbers', () => {
+    const markdown = renderDocxMarkdown({
+      blocks: [
+        {
+          block_type: 10,
+          ordered: {
+            elements: [{ text_run: { content: 'First' } }],
+          },
+        },
+        {
+          block_type: 10,
+          ordered: {
+            elements: [{ text_run: { content: 'Second' } }],
+          },
+        },
+        {
+          block_type: 10,
+          ordered: {
+            elements: [{ text_run: { content: 'Third' } }],
+          },
+        },
+      ],
+    })
+
+    expect(markdown).toContain('1. First')
+    expect(markdown).toContain('2. Second')
+    expect(markdown).toContain('3. Third')
+  })
+
+  it('prefers ordered marker from block payload when present', () => {
+    const markdown = renderDocxMarkdown({
+      blocks: [
+        {
+          block_type: 10,
+          ordered: {
+            order: 5,
+            elements: [{ text_run: { content: 'Fifth' } }],
+          },
+        },
+        {
+          block_type: 10,
+          ordered: {
+            order: 6,
+            elements: [{ text_run: { content: 'Sixth' } }],
+          },
+        },
+      ],
+    })
+
+    expect(markdown).toContain('5. Fifth')
+    expect(markdown).toContain('6. Sixth')
+  })
+
+  it('renders nested bullet list using block parent relationship', () => {
+    const markdown = renderDocxMarkdown({
+      blocks: [
+        {
+          block_id: 'b1',
+          block_type: 9,
+          bullet: {
+            elements: [{ text_run: { content: 'Parent item' } }],
+          },
+        },
+        {
+          block_id: 'b2',
+          parent_id: 'b1',
+          block_type: 9,
+          bullet: {
+            elements: [{ text_run: { content: 'Child item' } }],
+          },
+        },
+      ],
+    })
+
+    expect(markdown).toContain('- Parent item')
+    expect(markdown).toContain('  - Child item')
+  })
+
+  it('renders nested ordered list with depth-aware fallback numbering', () => {
+    const markdown = renderDocxMarkdown({
+      blocks: [
+        {
+          block_id: 'o1',
+          block_type: 10,
+          ordered: {
+            elements: [{ text_run: { content: 'Top 1' } }],
+          },
+        },
+        {
+          block_id: 'o2',
+          parent_id: 'o1',
+          block_type: 10,
+          ordered: {
+            elements: [{ text_run: { content: 'Sub 1' } }],
+          },
+        },
+        {
+          block_id: 'o3',
+          parent_id: 'o1',
+          block_type: 10,
+          ordered: {
+            elements: [{ text_run: { content: 'Sub 2' } }],
+          },
+        },
+        {
+          block_id: 'o4',
+          block_type: 10,
+          ordered: {
+            elements: [{ text_run: { content: 'Top 2' } }],
+          },
+        },
+      ],
+    })
+
+    expect(markdown).toContain('1. Top 1')
+    expect(markdown).toContain('  1. Sub 1')
+    expect(markdown).toContain('  2. Sub 2')
+    expect(markdown).toContain('2. Top 2')
+  })
+
+  it('renders table block to markdown table and suppresses table child blocks', () => {
+    const markdown = renderDocxMarkdown({
+      blocks: [
+        {
+          block_id: 't1',
+          block_type: 31,
+          table: {
+            cells: [
+              ['c11', 'c12'],
+              ['c21', 'c22'],
+            ],
+          },
+        },
+        {
+          block_id: 'c11',
+          parent_id: 't1',
+          text: {
+            elements: [{ text_run: { content: 'Name' } }],
+          },
+        },
+        {
+          block_id: 'c12',
+          parent_id: 't1',
+          text: {
+            elements: [{ text_run: { content: 'Score' } }],
+          },
+        },
+        {
+          block_id: 'c21',
+          parent_id: 't1',
+          text: {
+            elements: [{ text_run: { content: 'Alice' } }],
+          },
+        },
+        {
+          block_id: 'c22',
+          parent_id: 't1',
+          text: {
+            elements: [{ text_run: { content: '95' } }],
+          },
+        },
+      ],
+    })
+
+    expect(markdown).toContain('| Name | Score |')
+    expect(markdown).toContain('| --- | --- |')
+    expect(markdown).toContain('| Alice | 95 |')
   })
 
   it('falls back to raw content when blocks are empty', () => {
@@ -259,5 +428,36 @@ describe('hasMarkdownBodyContent', () => {
 
   it('returns true when markdown has non-heading body', () => {
     expect(hasMarkdownBodyContent('# Title\n\nBody text\n')).toBe(true)
+  })
+})
+
+describe('normalizeMarkdownOutput', () => {
+  it('removes broken bold markers in headings', () => {
+    const markdown = '### **21. 解释 TypeScript 中的**`this`** 和**`=>`** (箭头函数)。**\n'
+    expect(normalizeMarkdownOutput(markdown)).toBe('### 21. 解释 TypeScript 中的`this` 和`=>` (箭头函数)。\n')
+  })
+
+  it('does not renumber list markers in post-processing', () => {
+    const markdown = [
+      '```md',
+      '1. keep',
+      '1. keep',
+      '```',
+      '',
+      '1. out',
+      '1. out',
+      '',
+    ].join('\n')
+
+    expect(normalizeMarkdownOutput(markdown)).toBe([
+      '```md',
+      '1. keep',
+      '1. keep',
+      '```',
+      '',
+      '1. out',
+      '1. out',
+      '',
+    ].join('\n'))
   })
 })

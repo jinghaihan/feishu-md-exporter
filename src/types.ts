@@ -4,6 +4,7 @@ export interface CommandOptions {
   appId?: string
   appSecret?: string
   debug?: boolean | string
+  skipDiscover?: boolean | string
   output?: string
   manifest?: string
   maxDepth?: number | string
@@ -11,8 +12,9 @@ export interface CommandOptions {
   pageSize?: number | string
 }
 
-export interface ResolvedOptions extends Omit<Required<CommandOptions>, 'debug' | 'maxDepth' | 'maxDocs' | 'pageSize'> {
+export interface ResolvedOptions extends Omit<Required<CommandOptions>, 'debug' | 'skipDiscover' | 'maxDepth' | 'maxDocs' | 'pageSize'> {
   debug: boolean
+  skipDiscover: boolean
   outputDirPath: string
   manifestPath: string
   maxDepth: number

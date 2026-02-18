@@ -46,6 +46,7 @@ export const FEISHU_CODE_LANGUAGE_ID_TO_MARKDOWN: Readonly<Record<number, string
 
 export const DEFAULT_OPTIONS: Partial<CommandOptions> = {
   debug: false,
+  skipDiscover: false,
   output: DEFAULT_OUTPUT_DIR,
   manifest: DEFAULT_MANIFEST_FILE,
   maxDepth: DEFAULT_MAX_DEPTH,
