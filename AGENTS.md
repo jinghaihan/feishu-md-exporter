@@ -22,3 +22,4 @@
 - Keep modules small and focused.
 - Keep error messages actionable and include API path/context.
 - Keep changes type-safe under strict TypeScript settings.
+- Before finishing any code change, run `pnpm lint --fix` and `pnpm typecheck`, and ensure both commands pass.

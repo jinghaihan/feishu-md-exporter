@@ -1,4 +1,3 @@
-/* eslint-disable regexp/no-unused-capturing-group */
 import { FEISHU_CODE_LANGUAGE_ID_TO_MARKDOWN } from '../constants'
 
 export interface RenderDocxMarkdownOptions {
@@ -82,7 +81,7 @@ function renderBlock(block: unknown): string[] {
   const blockType = getBlockType(block)
   const text = blockType === 'code'
     ? normalizeCodeBlockContent(extractBlockText(block))
-    : normalizeLine(extractBlockText(block))
+    : normalizeLine(extractBlockText(block, true))
   if (!text)
     return []
 
@@ -235,7 +234,7 @@ function getCodeLanguage(block: unknown, content: string) {
   return inferCodeFenceLanguage(resolved, content)
 }
 
-function extractBlockText(block: unknown) {
+function extractBlockText(block: unknown, richText = false) {
   if (!block || typeof block !== 'object')
     return ''
 
@@ -259,15 +258,15 @@ function extractBlockText(block: unknown) {
   for (const key of payloadKeys) {
     if (!(key in record))
       continue
-    const value = extractText(record[key])
+    const value = extractText(record[key], richText)
     if (value)
       return value
   }
 
-  return extractText(block)
+  return extractText(block, richText)
 }
 
-function extractText(value: unknown): string {
+function extractText(value: unknown, richText = false): string {
   if (typeof value === 'string')
     return value
 
@@ -275,18 +274,16 @@ function extractText(value: unknown): string {
     return ''
 
   if (Array.isArray(value)) {
-    const combined = value.map(item => extractText(item)).filter(Boolean).join('')
+    const combined = value.map(item => extractText(item, richText)).filter(Boolean).join('')
     return combined
   }
 
   const record = value as Record<string, unknown>
   if (Array.isArray(record.elements))
-    return record.elements.map(item => extractText(item)).filter(Boolean).join('')
+    return record.elements.map(item => extractText(item, richText)).filter(Boolean).join('')
 
   if (record.text_run && typeof record.text_run === 'object') {
-    const content = (record.text_run as Record<string, unknown>).content
-    if (typeof content === 'string')
-      return content
+    return extractTextRun(record.text_run as Record<string, unknown>, richText)
   }
 
   const contentKeys = ['content', 'text', 'title', 'name']
@@ -297,6 +294,56 @@ function extractText(value: unknown): string {
   }
 
   return ''
+}
+
+function extractTextRun(textRun: Record<string, unknown>, richText: boolean) {
+  const content = textRun.content
+  if (typeof content !== 'string')
+    return ''
+
+  if (!richText)
+    return content
+
+  const style = textRun.text_element_style
+  if (!style || typeof style !== 'object')
+    return content
+
+  return applyTextElementStyle(content, style as Record<string, unknown>)
+}
+
+function applyTextElementStyle(content: string, style: Record<string, unknown>) {
+  let formatted = content
+
+  if (style.inline_code === true)
+    formatted = wrapInlineCode(formatted)
+  if (style.bold === true)
+    formatted = wrapMarkdownStyle(formatted, '**')
+  if (style.italic === true)
+    formatted = wrapMarkdownStyle(formatted, '*')
+  if (style.strikethrough === true)
+    formatted = wrapMarkdownStyle(formatted, '~~')
+  if (style.underline === true)
+    formatted = `<u>${formatted}</u>`
+
+  return formatted
+}
+
+function wrapMarkdownStyle(content: string, marker: string) {
+  if (!content)
+    return content
+  return `${marker}${content}${marker}`
+}
+
+function wrapInlineCode(content: string) {
+  if (!content)
+    return content
+
+  const matches = content.match(/`+/g) || []
+  const longest = matches.length ? Math.max(...matches.map(match => match.length)) : 0
+  const fence = '`'.repeat(longest + 1)
+  const needsPadding = content.startsWith('`') || content.endsWith('`')
+  const normalized = needsPadding ? ` ${content} ` : content
+  return `${fence}${normalized}${fence}`
 }
 
 function normalizeLine(input: string | undefined) {
@@ -360,14 +407,14 @@ function inferCodeFenceLanguage(language: string, content: string) {
 }
 
 function looksLikeJsx(content: string) {
-  return /<[A-Z][A-Za-z0-9]*(\s|>)/.test(content)
+  return /<[A-Z][A-Za-z0-9]*(?:\s|>)/.test(content)
     || /return\s*\(\s*</.test(content)
     || /<>\s*/.test(content)
 }
 
 function looksLikeVueSfc(content: string) {
-  return /<template(\s|>)/.test(content)
-    && /<script(\s|>)/.test(content)
+  return /<template(?:\s|>)/.test(content)
+    && /<script(?:\s|>)/.test(content)
 }
 
 function hasMarkdownBody(lines: string[]) {

@@ -198,6 +198,48 @@ describe('renderDocxMarkdown', () => {
 
     expect(markdown).toContain('```vue')
   })
+
+  it('renders inline rich text styles for non-code blocks', () => {
+    const markdown = renderDocxMarkdown({
+      blocks: [
+        {
+          text: {
+            elements: [
+              { text_run: { content: 'Read ' } },
+              { text_run: { content: 'bold', text_element_style: { bold: true } } },
+              { text_run: { content: ' and ' } },
+              { text_run: { content: 'italic', text_element_style: { italic: true } } },
+              { text_run: { content: ' and ' } },
+              { text_run: { content: 'code', text_element_style: { inline_code: true } } },
+              { text_run: { content: ' and ' } },
+              { text_run: { content: 'strike', text_element_style: { strikethrough: true } } },
+              { text_run: { content: ' and ' } },
+              { text_run: { content: 'under', text_element_style: { underline: true } } },
+            ],
+          },
+        },
+      ],
+    })
+
+    expect(markdown).toContain('Read **bold** and *italic* and `code` and ~~strike~~ and <u>under</u>')
+  })
+
+  it('renders inline code with embedded backticks safely', () => {
+    const markdown = renderDocxMarkdown({
+      blocks: [
+        {
+          text: {
+            elements: [
+              { text_run: { content: 'value: ' } },
+              { text_run: { content: 'a`b', text_element_style: { inline_code: true } } },
+            ],
+          },
+        },
+      ],
+    })
+
+    expect(markdown).toContain('value: ``a`b``')
+  })
 })
 
 describe('sanitizePathSegment', () => {
