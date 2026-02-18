@@ -14,17 +14,19 @@ pnpm start --url "https://my.feishu.cn/docx/TEST_DOCX_TOKEN_001" \
 ```
 
 This command recursively discovers linked Feishu documents starting from `--url`,
-and writes a JSON manifest to `./feishu-documents.json` by default.
+writes a manifest JSON to `./output/manifest.json`, and exports markdown files into `./output`.
 
 ### Options
 
 - `--url <url>`: root document url (required)
 - `--app-id <appId>`: Feishu app id (required unless `FEISHU_APP_ID` is set)
 - `--app-secret <appSecret>`: Feishu app secret (required unless `FEISHU_APP_SECRET` is set)
-- `--output <path>`: output JSON path (default `feishu-documents.json`)
+- `--output <path>`: output directory for manifest + markdown (default `output`)
+- `--manifest <name>`: manifest file name under output directory (default `manifest.json`)
 - `--max-depth <n>`: max recursive depth (default `10`)
 - `--max-docs <n>`: max discovered docs (default `1000`)
 - `--page-size <n>`: API page size (default `200`, range `1-500`)
+- `--debug`: print detailed HTTP/debug logs to stderr
 
 ## Configuration
 
@@ -50,6 +52,7 @@ Environment variables are also supported:
 - `FEISHU_APP_ID`
 - `FEISHU_APP_SECRET`
 - `FEISHU_PAGE_SIZE`
+- `FEISHU_DEBUG`
 
 `.env` and `.env.local` in cwd are loaded automatically.
 

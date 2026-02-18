@@ -5,6 +5,7 @@ export interface CommandOptions {
   appSecret?: string
   debug?: boolean | string
   output?: string
+  manifest?: string
   maxDepth?: number | string
   maxDocs?: number | string
   pageSize?: number | string
@@ -12,7 +13,8 @@ export interface CommandOptions {
 
 export interface ResolvedOptions extends Omit<Required<CommandOptions>, 'debug' | 'maxDepth' | 'maxDocs' | 'pageSize'> {
   debug: boolean
-  outputPath: string
+  outputDirPath: string
+  manifestPath: string
   maxDepth: number
   maxDocs: number
   pageSize: number
@@ -109,6 +111,16 @@ export interface DiscoverOptions {
   onProgress?: (event: DiscoverProgressEvent) => void
 }
 
+export interface ExportMarkdownOptions {
+  appId: string
+  appSecret: string
+  debug: boolean
+  pageSize: number
+  manifestPath: string
+  outputDirPath: string
+  onProgress?: (event: ExportProgressEvent) => void
+}
+
 export interface DocumentItem {
   id: string
   kind: FeishuResourceKind
@@ -142,6 +154,16 @@ export interface DiscoverResult {
   tree: DocumentTreeNode[]
 }
 
+export interface ExportMarkdownResult {
+  generatedAt: string
+  sourceManifestPath: string
+  outputDirPath: string
+  total: number
+  written: number
+  skipped: number
+  warnings: string[]
+}
+
 export interface QueueItem {
   url: string
   depth: number
@@ -150,6 +172,7 @@ export interface QueueItem {
 }
 
 export type DiscoverProgressStatus = 'processing' | 'success' | 'skip' | 'warning' | 'error'
+export type ExportProgressStatus = 'processing' | 'success' | 'skip' | 'error'
 
 export interface DiscoverProgressEvent {
   status: DiscoverProgressStatus
@@ -161,5 +184,16 @@ export interface DiscoverProgressEvent {
   title?: string
   message: string
   discovered: number
+  warnings: number
+}
+
+export interface ExportProgressEvent {
+  status: ExportProgressStatus
+  sequence: number
+  id: string
+  message: string
+  targetPath?: string
+  written: number
+  skipped: number
   warnings: number
 }

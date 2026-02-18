@@ -72,6 +72,41 @@ export class FeishuClient {
     }
   }
 
+  async getDocxBlocks(documentToken: string): Promise<unknown[]> {
+    const blocks: unknown[] = []
+    let pageToken: string | undefined
+
+    for (;;) {
+      const query = new URLSearchParams({ page_size: String(Math.min(this.pageSize, DOCX_PAGE_SIZE_MAX)) })
+      if (pageToken)
+        query.set('page_token', pageToken)
+
+      const response = await this.request<DocumentBlocksPageData>(
+        `/docx/v1/documents/${documentToken}/blocks?${query.toString()}`,
+        documentBlocksPageDataSchema,
+      )
+      const items = response.items || response.blocks || []
+      blocks.push(...items)
+
+      if (!response.has_more)
+        break
+
+      pageToken = response.page_token
+      if (!pageToken)
+        break
+    }
+
+    return blocks
+  }
+
+  async getDocxRawContent(documentToken: string): Promise<string | undefined> {
+    const response = await this.request<RawContentData>(
+      `/docx/v1/documents/${documentToken}/raw_content`,
+      rawContentDataSchema,
+    )
+    return response.content
+  }
+
   async getWikiNode(nodeToken: string): Promise<WikiNode> {
     const candidates = buildWikiGetNodeCandidates(nodeToken)
 

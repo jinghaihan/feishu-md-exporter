@@ -5,7 +5,8 @@ export const NAME = pkg.name
 
 export const VERSION = pkg.version
 
-export const DEFAULT_OUTPUT_FILE = 'feishu-documents.json'
+export const DEFAULT_OUTPUT_DIR = 'output'
+export const DEFAULT_MANIFEST_FILE = 'manifest.json'
 export const DEFAULT_MAX_DEPTH = 10
 export const DEFAULT_MAX_DOCS = 1000
 export const DEFAULT_PAGE_SIZE = 200
@@ -29,7 +30,8 @@ export const WIKI_GET_NODE_QUERY_TEMPLATES = [
 
 export const DEFAULT_OPTIONS: Partial<CommandOptions> = {
   debug: false,
-  output: DEFAULT_OUTPUT_FILE,
+  output: DEFAULT_OUTPUT_DIR,
+  manifest: DEFAULT_MANIFEST_FILE,
   maxDepth: DEFAULT_MAX_DEPTH,
   maxDocs: DEFAULT_MAX_DOCS,
   pageSize: DEFAULT_PAGE_SIZE,

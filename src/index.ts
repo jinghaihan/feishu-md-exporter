@@ -1,5 +1,6 @@
 import type { CommandOptions } from './types'
 
+export * from './export'
 export * from './types'
 
 export function defineConfig(config: Partial<CommandOptions>) {

@@ -3,10 +3,11 @@ import process from 'node:process'
 import { resolve } from 'pathe'
 import { createConfigLoader } from 'unconfig'
 import {
+  DEFAULT_MANIFEST_FILE,
   DEFAULT_MAX_DEPTH,
   DEFAULT_MAX_DOCS,
   DEFAULT_OPTIONS,
-  DEFAULT_OUTPUT_FILE,
+  DEFAULT_OUTPUT_DIR,
   DEFAULT_PAGE_SIZE,
   NAME,
 } from './constants'
@@ -18,20 +19,15 @@ export async function resolveConfig(options: Partial<CommandOptions>): Promise<R
   const cwd = options.cwd || process.cwd()
   loadEnvFiles(cwd)
 
-  const configOptions = await readConfig(options)
-  const envOptions = {
-    appId: process.env.FEISHU_APP_ID,
-    appSecret: process.env.FEISHU_APP_SECRET,
-    debug: process.env.FEISHU_DEBUG,
-    pageSize: process.env.FEISHU_PAGE_SIZE,
-  } satisfies Partial<CommandOptions>
+  const configOptions = await readConfig({ cwd })
+  const envOptions = resolveEnvOptions()
   const merged = { ...defaults, ...configOptions, ...envOptions, ...options, cwd }
 
   return resolveOptions(merged)
 }
 
-export async function readConfig(options: Partial<CommandOptions>) {
-  const loader = createConfigLoader<CommandOptions>({
+export async function readConfig(options: { cwd?: string }) {
+  const loader = createConfigLoader<Record<string, unknown>>({
     sources: [
       {
         files: [`${NAME}.config`],
@@ -52,18 +48,30 @@ function resolveOptions(options: Partial<CommandOptions>): ResolvedOptions {
     appId: requiredString(options.appId, 'app-id'),
     appSecret: requiredString(options.appSecret, 'app-secret'),
     debug: options.debug ?? false,
-    output: options.output || DEFAULT_OUTPUT_FILE,
+    output: options.output || DEFAULT_OUTPUT_DIR,
+    manifest: options.manifest || DEFAULT_MANIFEST_FILE,
     maxDepth: options.maxDepth ?? DEFAULT_MAX_DEPTH,
     maxDocs: options.maxDocs ?? DEFAULT_MAX_DOCS,
     pageSize: options.pageSize ?? DEFAULT_PAGE_SIZE,
   }
+  const outputDirPath = resolve(baseOptions.cwd, baseOptions.output)
 
   return {
     ...baseOptions,
     debug: toBoolean(baseOptions.debug, false, '--debug'),
-    outputPath: resolve(baseOptions.cwd, baseOptions.output),
+    outputDirPath,
+    manifestPath: resolve(outputDirPath, baseOptions.manifest),
     maxDepth: toPositiveInt(baseOptions.maxDepth, DEFAULT_MAX_DEPTH, '--max-depth'),
     maxDocs: toPositiveInt(baseOptions.maxDocs, DEFAULT_MAX_DOCS, '--max-docs'),
     pageSize: toIntegerInRange(baseOptions.pageSize, DEFAULT_PAGE_SIZE, 1, 500, '--page-size'),
   }
+}
+
+function resolveEnvOptions() {
+  return {
+    appId: process.env.FEISHU_APP_ID,
+    appSecret: process.env.FEISHU_APP_SECRET,
+    debug: process.env.FEISHU_DEBUG,
+    pageSize: process.env.FEISHU_PAGE_SIZE,
+  } satisfies Partial<CommandOptions>
 }
