@@ -1,4 +1,9 @@
-import type { DocumentItem, DocumentRelation, DocumentTreeNode, FeishuResourceKind } from '../types'
+import type {
+  DocumentItem,
+  DocumentRelation,
+  DocumentTreeNode,
+  FeishuResourceKind,
+} from '../types'
 
 export function resourceId(kind: FeishuResourceKind, token: string) {
   return `${kind}:${token}`

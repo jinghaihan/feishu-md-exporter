@@ -10,7 +10,13 @@ import { mkdir, readFile, unlink, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'pathe'
 import { FeishuClient } from './client'
 import { discoverResultSchema } from './schema'
-import { hasMarkdownBodyContent, jsonParse, mapWikiObjectKind, renderDocxMarkdown, sanitizePathSegment } from './utils'
+import {
+  hasMarkdownBodyContent,
+  jsonParse,
+  mapWikiObjectKind,
+  renderDocxMarkdown,
+  sanitizePathSegment,
+} from './utils'
 
 export async function exportMarkdown(options: ExportMarkdownOptions): Promise<ExportMarkdownResult> {
   const manifest = await loadDiscoverResult(options.manifestPath)

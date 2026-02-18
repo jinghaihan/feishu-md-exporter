@@ -11,7 +11,14 @@ import {
   DEFAULT_PAGE_SIZE,
   NAME,
 } from './constants'
-import { loadEnvFiles, normalizeConfig, requiredString, toBoolean, toIntegerInRange, toPositiveInt } from './utils'
+import {
+  loadEnvFiles,
+  normalizeConfig,
+  requiredString,
+  toBoolean,
+  toIntegerInRange,
+  toPositiveInt,
+} from './utils'
 
 export async function resolveConfig(options: Partial<CommandOptions>): Promise<ResolvedOptions> {
   const defaults = structuredClone(DEFAULT_OPTIONS)

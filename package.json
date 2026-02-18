@@ -1,7 +1,7 @@
 {
   "name": "feishu-md-exporter",
   "type": "module",
-  "version": "0.0.0",
+  "version": "0.0.0-alpha.0",
   "packageManager": "pnpm@10.29.3",
   "description": "Discover linked Feishu documents and export markdown.",
   "author": "jinghaihan",
@@ -14,7 +14,12 @@
   "bugs": {
     "url": "https://github.com/jinghaihan/feishu-md-exporter/issues"
   },
-  "keywords": [],
+  "keywords": [
+    "feishu",
+    "markdown",
+    "export",
+    "cli"
+  ],
   "exports": {
     ".": "./dist/index.mjs",
     "./cli": "./dist/cli.mjs",
